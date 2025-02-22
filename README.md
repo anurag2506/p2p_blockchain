@@ -18,3 +18,6 @@ The functionalities added to the P2P network:<br>
 <br>
 <h2>Logic for my IP address:</h2>
 <p>We have also provided logic for fetching any system's IP address locally from the DNS server of google so that you don't have to enter your IP manually.</p>
+
+<h2> Further Improvements:</h2>
+<p> The streamlit is not working correctly. Will be working on that for better visualisation as to how the p2p system works and how messages are being sent.</p>
