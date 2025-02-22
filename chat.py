@@ -1,96 +1,95 @@
-# This is a chat application consisting of multiple peers
-
-# Multiple peers can communicate with each other over the TCP network
-# Each peer can send and receive messages simultaneously, 
-# maintain a list of connected peers, and allow users to query active connections
 import socket
 import threading
-import select
 
 class Peer():
     def __init__(self, name, port):
-        # self.ip = ip
-        self.ip = self.get_local_ip()
+        # self.ip = self.get_local_ip()
+        self.ip = "127.0.0.1"
         self.name = name
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Fix port in use issue
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         print(f"Binding to IP: {self.ip}, Port: {self.port}")
-        self.server_socket.bind(("0.0.0.0", self.port)) # ip can be replaced with self.ip if needed
+        self.server_socket.bind((self.ip, self.port))  # Use self.ip instead of 0.0.0.0
         self.server_socket.listen(5)
-        print(f"Server listening on 0.0.0.0 :{self.port}")
+        print(f"Server listening on {self.ip}:{self.port}")
         self.peers = {} 
         threading.Thread(target=self.listen_for_messages, daemon=True).start()
     
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            s.connect(("8.8.8.8",80)) # Google DNS server
+            s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
         finally:
             s.close()
         return ip
+
     def listen_for_messages(self):
-        print(f"Server listening on port{self.port}")
+        print(f"Listening for messages on port {self.port}...")
         while True:
             conn, addr = self.server_socket.accept()
             threading.Thread(target=self.handle_client, args=(conn,), daemon=True).start()
 
-    def handle_client(self,conn): 
-        while True:
-            try:
+    def handle_client(self, conn): 
+        try:
+            while True:
                 msg = conn.recv(1024).decode().strip()
-                if msg:
-                   parts = msg.split(" ",2) 
-                   
-                   if len(parts) < 3:
-                       print(f"Invalid message format")
-                       return
-                   sender_info, sender_team, message = parts
-                   sender_ip, sender_port = sender_info.split(":")
-                   
-                    # Store sender in the peers dictionary
-                   self.peers[sender_info] = sender_team
-                   print(f"✅ Peer added: {sender_info} ({sender_team})")
-            except Exception as e:
-                print(f"⚠️ Error handling message: {e}")
-            finally:
-                conn.close()
+                if not msg:
+                    break  
 
-# Sends a particular message to a particular port and ip
+                parts = msg.split(" ", 2)
+                if len(parts) < 3:
+                    print("Invalid message format")
+                    break 
+
+                sender_info, sender_team, message = parts
+                sender_ip, sender_port = sender_info.split(":")
+                self.peers[sender_info] = sender_team  
+                print(f" Message from {sender_ip}:{sender_port} ({sender_team}): {message}")
+
+        except ConnectionResetError:
+            print("Connection was reset by the peer")
+        except Exception as e:
+            print(f"⚠️ Error handling message: {e}")
+        finally:
+            conn.close()  # Ensure the socket is closed properly
+
     def send_message(self, target_ip, target_port, message):
         try:
+            print(f"Attempting to send message to {target_ip}:{target_port}...")  # Debugging
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((target_ip, target_port))
-            formatted_message = f"{self.ip}:{self.port} {self.team_name} {message}"
+            formatted_message = f"{self.ip}:{self.port} {self.name} {message}"
+            print(f"Formatted Message: {formatted_message}")  # Debugging
             sock.sendall(formatted_message.encode())
-            print(f"Sent: {formatted_message} to {target_ip}:{target_port}")
+            print(f"Sent message to {target_ip}:{target_port}")
             sock.close()
         except Exception as e:
             print(f"Could not send message to {target_ip}:{target_port} - {e}")
-    
-# Helps you view all the possible peers to connected
+
     def query_peers(self):
         if self.peers:
             print("Connected Peers:")
-        for peer, team in self.peers.items():
-            print(f"{peer}: {(team)}")
+            for peer, team in self.peers.items():
+                print(f"{peer}: {team}")
         else:
             print("No connected peers")
 
-# Helps u to connect to nodes that have already sent previous messages
     def connect_to_active_peers(self):
         for peer in self.peers.keys():
             ip, port = peer.split(":")
             self.send_message(ip, int(port), "Hello again!")
-    
+
     def menu(self):
         while True:
             print("\n***** Menu *****")
             print("1. Send message")
             print("2. Query connected peers")
             print("3. Connect to active peers")
+            print("4. Send message to 10.206.4.122:1255")
+            print("5. Send message to 10.206.5.228:6555")
             print("0. Quit")
 
             choice = input("Enter choice: ")
@@ -99,11 +98,10 @@ class Peer():
                 target_ip = input("Enter recipient’s IP: ")
                 target_port = int(input("Enter recipient’s port: "))
                 message = input("Enter your message: ")
+                if target_ip == "0.0.0.0":
+                    print("Invalid IP address. Use an actual local IP.")
+                    continue
                 self.send_message(target_ip, target_port, message)
-                
-                # Specific 2 ports in which messages are to be sent
-                self.send_message("10.206.4.122", 1255, message)
-                self.send_message("10.206.5.228", 6555, message)
 
             elif choice == "2":
                 self.query_peers()
@@ -111,18 +109,23 @@ class Peer():
             elif choice == "3":
                 self.connect_to_active_peers()
 
+            elif choice == "4":
+                message = input("Enter your message: ")
+                self.send_message("10.206.4.122", 1255, message)
+
+            elif choice == "5":
+                message = input("Enter your message: ")
+                self.send_message("10.206.5.228", 6555, message)
+
             elif choice == "0":
-                print(" Exiting...")
+                print("Exiting...")
                 break
 
             else:
-                print(" Invalid choice, try again.")
-                
+                print("Invalid choice, try again.")
+
 if __name__ == "__main__":
     team_name = input("Enter your team name: ")
     port = int(input("Enter your port number: "))
-
     peer = Peer(team_name, port)
     peer.menu()
-        
-        
