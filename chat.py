@@ -17,6 +17,7 @@ class Peer():
         self.peers = {} 
         threading.Thread(target=self.listen_for_messages, daemon=True).start()
     
+    # Fetching local Ip from Google DNS server.
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -54,29 +55,31 @@ class Peer():
         except Exception as e:
             print(f"⚠️ Error handling message: {e}")
         finally:
-            conn.close()  # Ensure the socket is closed properly
+            conn.close()  
 
     def send_message(self, target_ip, target_port, message):
         try:
-            print(f"Attempting to send message to {target_ip}:{target_port}...")  # Debugging
+            print(f"Attempting to send message to {target_ip}:{target_port}...")  
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((target_ip, target_port))
             formatted_message = f"{self.ip}:{self.port} {self.name} {message}"
-            print(f"Formatted Message: {formatted_message}")  # Debugging
+            print(f"Formatted Message: {formatted_message}") 
             sock.sendall(formatted_message.encode())
             print(f"Sent message to {target_ip}:{target_port}")
             sock.close()
         except Exception as e:
             print(f"Could not send message to {target_ip}:{target_port} - {e}")
-
+            
+# Gives a list of peers who have connected before (online or offline)
     def query_peers(self):
         if self.peers:
             print("Connected Peers:")
-            for peer, info in self.peers.items():
-                print(f"{peer} - Team: {info['team']}, Last Msg: '{info['last_msg']}'")
+            for peer, team in self.peers.items():
+                print(f"{peer}: {team}")
         else:
             print("No connected peers")
 
+# Gives a list of active peers who have previously sent messages
     def connect_to_active_peers(self):
         for peer in self.peers.keys():
             ip, port = peer.split(":")
