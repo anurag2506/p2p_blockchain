@@ -2,9 +2,9 @@ import socket
 import threading
 
 class Peer():
-    def __init__(self, name, port):
+    def __init__(self, name, ip,port):
         # self.ip = self.get_local_ip()
-        self.ip = "127.0.0.1"
+        self.ip = ip
         self.name = name
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,8 +72,8 @@ class Peer():
     def query_peers(self):
         if self.peers:
             print("Connected Peers:")
-            for peer, team in self.peers.items():
-                print(f"{peer}: {team}")
+            for peer, info in self.peers.items():
+                print(f"{peer} - Team: {info['team']}, Last Msg: '{info['last_msg']}'")
         else:
             print("No connected peers")
 
@@ -126,6 +126,7 @@ class Peer():
 
 if __name__ == "__main__":
     team_name = input("Enter your team name: ")
+    ip = input("Enter your IP: ")
     port = int(input("Enter your port number: "))
-    peer = Peer(team_name, port)
+    peer = Peer(team_name,ip, port)
     peer.menu()
